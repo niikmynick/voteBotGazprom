@@ -1,9 +1,10 @@
 import openpyxl
 import logging
 import os
+import db
 
 
-def process_sheet(source, storage):
+def process_sheet(source, storage, city):
     row = 3
     try:
         while source[f'A{row}'].value is not None:
@@ -14,7 +15,26 @@ def process_sheet(source, storage):
 
             position = source[f'C{row}'].value
             team = source[f'D{row}'].value
-            head = source[f'E{row}'].value
+            head = ''
+            match city:
+                case 'moscow':
+                    head = 'МСК'
+                case 'novgorod':
+                    head = 'НН'
+                case 'podolsk':
+                    head = 'Подольск'
+                case 'saratov':
+                    head = 'Саратов'
+                case 'spb':
+                    head = 'СПб'
+                case 'stavropol':
+                    head = 'Ставрополь'
+                case 'tumen':
+                    head = 'Тюмень'
+                case 'administration':
+                    head = 'АГПП'
+
+            # head = source[f'E{row}'].value
 
             temp = {
                 'position': position.strip(),
@@ -44,7 +64,7 @@ def save_data(storage):
             if filename.is_file():
                 book = openpyxl.load_workbook(filename.path)
                 sheet = book.active
-                process_sheet(sheet, storage)
+                process_sheet(sheet, storage, filename.name[:-5])
 
     except FileNotFoundError:
         logging.error('File table.xlsx not found')
