@@ -70,7 +70,10 @@ async def vote_request_handler(message: Message) -> None:
         answer_text = 'Хорошо, вот список участников:'
 
         for i in performers.keys():
-            kb_builder.row(KeyboardButton(text=f"{i}"))
+            kb_builder.row(KeyboardButton(text=f"{performers[i]['u1']}"
+                                               f"{', ' if performers[i]['u2'] else ''}"
+                                               f"{performers[i]['u2']}"
+                                               f" - {performers[i]['head']}"))
 
     await message.answer(
         answer_text,
@@ -147,14 +150,22 @@ async def text_handler(message: Message) -> None:
     elif users[message.from_user.username]['status'] == 'voting':
         username = message.from_user.username
 
-        users[username]['status'] = 'logged_in'
-
-        answer_text = 'Ваш голос записан!'
-
         u_id = db.get_user_id(users[username]['fullname'])[0][0]
-        vote_id = performers[message.text]['u_id']
+        vote_id = 0
+        for v_id in performers.keys():
+            text = f"{performers[v_id]['u1']}{', ' if performers[v_id]['u2'] else ''}{performers[v_id]['u2']} - {performers[v_id]['head']}"
+            if text == message.text:
+                vote_id = v_id
+                break
 
-        db.register_vote(u_id, vote_id)
+        if db.get_user_head(users[username]['fullname'])[0][0] != db.get_performers_head(vote_id)[0][0]:
+            users[username]['status'] = 'logged_in'
+
+            answer_text = 'Ваш голос записан!'
+
+            db.register_vote(u_id, vote_id)
+        else:
+            answer_text = 'Вы не можете голосовать за участника из своего филиала. Выберите другого участника'
 
     else:
         answer_text = 'Ошибка'
@@ -177,8 +188,12 @@ async def main():
         }
 
     for i in db.get_performers():
-        performers[i[1]] = {
-            'u_id': int(i[0]),
+        u1 = '' if not i[1] else i[1].split()
+        u2 = '' if not i[2] else i[2].split()
+        performers[i[0]] = {
+            'u1': '' if not u1 else f'{u1[0]} {u1[1][0]}. {u1[2][0]}.',
+            'u2': '' if not u2 else f'{u2[0]} {u2[1][0]}. {u2[2][0]}.',
+            'head': i[3],
         }
 
     save_data(data)
