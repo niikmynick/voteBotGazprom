@@ -12,16 +12,17 @@ def connect():
         conn = sqlite3.connect('identifier.sqlite')
         cur = conn.cursor()
         connected = True
-        cur.execute("""
-        create table if not exists User (
-            id integer primary key autoincrement,
-            name varchar(255) not null,
-            position varchar(255) not null,
-            team varchar(255) not null,
-            head varchar(255) not null,
-            logged_in bool not null 
-        );
-        """)
+
+        # cur.execute("""
+        # create table if not exists User (
+        #     id integer primary key autoincrement,
+        #     name varchar(255) not null,
+        #     position varchar(255) not null,
+        #     team varchar(255) not null,
+        #     head varchar(255) not null,
+        #     logged_in bool not null
+        # );
+        # """)
 
     except sqlite3.Error as e:
         logging.error(e)
@@ -68,9 +69,29 @@ def get_user_id(u_name):
         return []
 
 
+def get_user_head(u_name):
+    try:
+        cur.execute(f"select head from User where name = '{u_name}'")
+        return cur.fetchall()
+
+    except sqlite3.Error as e:
+        logging.error(e)
+        return []
+
+
 def get_performers():
     try:
-        cur.execute(f"select U.id, name from Performers join User U on U.id = Performers.person_id")
+        cur.execute("select id, person_name, person2_name, head from Performers")
+        return cur.fetchall()
+
+    except sqlite3.Error as e:
+        logging.error(e)
+        return []
+
+
+def get_performers_head(v_id):
+    try:
+        cur.execute(f"select head from Performers where id = '{v_id}'")
         return cur.fetchall()
 
     except sqlite3.Error as e:
@@ -81,7 +102,8 @@ def get_performers():
 def insert_user(u_name, u_position, u_team, u_head):
     try:
         cur.execute(
-            f"insert into User (name, position, team, head, logged_in) values ('{u_name}', '{u_position}', '{u_team}', '{u_head}', FALSE);")
+            f"insert into User (name, position, team, head, logged_in) "
+            f"values ('{u_name}', '{u_position}', '{u_team}', '{u_head}', FALSE);")
         conn.commit()
 
     except sqlite3.Error as e:
