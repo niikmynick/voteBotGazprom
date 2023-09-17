@@ -10,22 +10,21 @@ def process_sheet(source, storage):
             name = source[f'B{row}'].value
             note = ''
             if '(' in name:
-                name, note = name[:-1].split('(')
+                name, note = name[:-1].split(' (')
 
             position = source[f'C{row}'].value
             team = source[f'D{row}'].value
             head = source[f'E{row}'].value
 
             temp = {
-                'position': position,
-                'team': team,
-                'head': head,
-                'note': note,
+                'position': position.strip(),
+                'team': team.strip(),
+                'head': head.strip(),
+                'note': note.strip(),
             }
 
             if name in storage.keys():
                 storage[name].append(temp)
-                print(storage[name])
             else:
                 storage[name] = [temp]
 

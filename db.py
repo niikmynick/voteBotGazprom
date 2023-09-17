@@ -40,7 +40,7 @@ def get_users():
 
 def get_tg_users():
     try:
-        cur.execute(f"select id, username from TGUser")
+        cur.execute(f"select tg_id, username, U.name from TGUser join main.User U on U.id = TGUser.u_id")
         return cur.fetchall()
 
     except sqlite3.Error as e:
@@ -48,20 +48,19 @@ def get_tg_users():
         return []
 
 
-def insert_tg_user(user_id, username):
+def insert_tg_user(user_id, p_id, username):
     try:
         cur.execute(
-            f"insert into TGUser (id, username) values ({user_id}, '{username}')")
+            f"insert into TGUser (tg_id, u_id, username) values ({user_id}, {p_id}, '{username}')")
         conn.commit()
 
     except sqlite3.Error as e:
         logging.error(e)
 
 
-def get_user_id(u_name, u_note):
+def get_user_id(u_name):
     try:
-        temp = f'{u_name} ({u_note})'
-        cur.execute(f"select id from User where name = '{temp}'")
+        cur.execute(f"select id from User where name = '{u_name}'")
         return cur.fetchall()
 
     except sqlite3.Error as e:
@@ -71,7 +70,7 @@ def get_user_id(u_name, u_note):
 
 def get_performers():
     try:
-        cur.execute(f"select name from Performers join User U on U.id = Performers.person_id")
+        cur.execute(f"select U.id, name from Performers join User U on U.id = Performers.person_id")
         return cur.fetchall()
 
     except sqlite3.Error as e:
@@ -89,9 +88,8 @@ def insert_user(u_name, u_position, u_team, u_head):
         logging.error(e)
 
 
-def login_user(u_name, u_note):
+def login_user(u_id):
     try:
-        u_id = get_user_id(u_name, u_note)[0]
         cur.execute(f'update User set logged_in = TRUE where id = {u_id}')
         conn.commit()
 

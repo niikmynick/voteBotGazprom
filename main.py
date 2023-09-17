@@ -9,7 +9,7 @@ from aiogram.enums import ParseMode
 from aiogram.filters import Command, Filter
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
+from aiogram.utils.keyboard import ReplyKeyboardBuilder, KeyboardButton
 
 import db
 from properties import BOT_TOKEN
@@ -26,6 +26,7 @@ class TextFilter(Filter):
 
 data = {}
 users = {}
+performers = {}
 admins = ['niikmynick']
 
 
@@ -54,46 +55,22 @@ async def command_start_handler(message: Message) -> None:
 
 
 @dp.message(TextFilter('Голосовать'))
-async def task_request_handler(message: Message) -> None:
+async def vote_request_handler(message: Message) -> None:
     username = message.from_user.username
     logging.info(f'User {username} asked for vote menu')
 
-    answer_text = ''
     kb_builder = ReplyKeyboardBuilder()
 
-    await message.answer(
-        answer_text,
-        reply_markup=kb_builder.as_markup(resize_keyboard=True)
-    )
-
-
-@dp.message()
-async def name_handler(message: Message) -> None:
-    if users[message.from_user.username]['status'] != 'need_name':
-        return
-
-    username = message.from_user.username
-    fullname = message.text
-
-    kb_builder = ReplyKeyboardBuilder()
-
-    if user_access(fullname, data):
-        logging.info(f'User {username} sent his name')
-
-        if len(data[fullname]) > 1:
-            answer_text = ''
-            users[message.from_user.username]['status'] = 'need_name_2'
-
-        else:
-            users[username]['status'] = 'logged_in'
-
-            answer_text = 'Отлично, теперь ты можешь пользоваться ботом'
-
-            kb_builder.button(text=f"Голосовать")
+    if db.check_vote(db.get_user_id(users[username]['fullname'])[0][0]):
+        answer_text = 'Вы уже голосовали'
 
     else:
-        answer_text = 'К сожалению, вам недоступно использование этого бота'
-        users[username]['status'] = 'denied'
+        users[message.from_user.username]['status'] = 'voting'
+
+        answer_text = 'Хорошо, вот список участников:'
+
+        for i in performers.keys():
+            kb_builder.row(KeyboardButton(text=f"{i}"))
 
     await message.answer(
         answer_text,
@@ -102,19 +79,85 @@ async def name_handler(message: Message) -> None:
 
 
 @dp.message()
-async def name2_handler(message: Message) -> None:
-    if users[message.from_user.username]['status'] != 'need_name2':
-        return
-
-    username = message.from_user.username
-
-    users[username]['status'] = 'logged_in'
-    db.insert_tg_user(message.from_user.id, username)
-
-    answer_text = 'Отлично, теперь ты можешь пользоваться ботом'
+async def text_handler(message: Message) -> None:
     kb_builder = ReplyKeyboardBuilder()
 
-    kb_builder.button(text=f"Голосовать", callback_data=f"vote")
+    if users[message.from_user.username]['status'] == 'need_name':
+        username = message.from_user.username
+        fullname = message.text.strip()
+
+        if user_access(fullname, data):
+            logging.info(f'User {username} sent his name')
+
+            if len(data[fullname]) > 1:
+                answer_text = ('Ого, в компании вы не один с таким именем. '
+                               'Помогите мне правильно идентифицировать вас\n'
+                               'Выберите подходящий пункт из меню ниже')
+
+                for element in data[fullname]:
+                    kb_builder.row(KeyboardButton(text=f"{fullname} ({element['note']})"))
+
+                users[message.from_user.username]['status'] = 'need_name2'
+
+            else:
+                p_id = db.get_user_id(fullname)[0][0]
+                users[username]['status'] = 'logged_in'
+                users[username]['person_id'] = p_id
+                users[username]['fullname'] = fullname
+
+                db.insert_tg_user(message.from_user.id, p_id, username)
+                db.login_user(p_id)
+
+                answer_text = 'Отлично, теперь ты можешь пользоваться ботом'
+
+                kb_builder.button(text="Голосовать")
+
+        else:
+            answer_text = 'К сожалению, вам недоступно использование этого бота'
+            users[username]['status'] = 'denied'
+
+    elif users[message.from_user.username]['status'] == 'need_name2':
+        username = message.from_user.username
+        fullname, note = message.text[:-1].split(' (')
+
+        if user_access(fullname, data):
+            if note in [i['note'] for i in data[fullname]]:
+                p_id = db.get_user_id(f"{fullname} ({note})")[0][0]
+
+                users[username]['status'] = 'logged_in'
+                users[username]['person_id'] = p_id
+                users[username]['fullname'] = f"{fullname} ({note})"
+
+                db.insert_tg_user(message.from_user.id, p_id, username)
+                db.login_user(p_id)
+
+                answer_text = 'Отлично, теперь ты можешь пользоваться ботом'
+
+                kb_builder.button(text=f"Голосовать", callback_data=f"vote")
+            else:
+                answer_text = 'Вы указали неверное имя. Попробуйте еще раз'
+
+                for element in data[fullname]:
+                    kb_builder.button(text=f"{fullname} ({element['note']})")
+
+        else:
+            answer_text = 'К сожалению, вам недоступно использование этого бота'
+            users[username]['status'] = 'denied'
+
+    elif users[message.from_user.username]['status'] == 'voting':
+        username = message.from_user.username
+
+        users[username]['status'] = 'logged_in'
+
+        answer_text = 'Ваш голос записан!'
+
+        u_id = db.get_user_id(users[username]['fullname'])[0][0]
+        vote_id = performers[message.text]['u_id']
+
+        db.register_vote(u_id, vote_id)
+
+    else:
+        answer_text = 'Ошибка'
 
     await message.answer(
         answer_text,
@@ -129,8 +172,16 @@ async def main():
     for i in db.get_tg_users():
         users[i[1]] = {
             'chat_id': i[0],
-            'status': 'logged_in'
-    }
+            'status': 'logged_in',
+            'fullname': i[2]
+        }
+
+    for i in db.get_performers():
+        performers[i[1]] = {
+            'u_id': int(i[0]),
+        }
+
+    save_data(data)
 
     logging.debug('Loading data from file')
 
