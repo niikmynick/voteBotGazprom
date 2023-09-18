@@ -9,9 +9,12 @@ def process_sheet(source, storage, city):
     try:
         while source[f'A{row}'].value is not None:
             name = source[f'B{row}'].value
+            fullname = ''
             note = ''
             if '(' in name:
-                name, note = name[:-1].split(' (')
+                fullname, note = name[:-1].split(' (')
+            else:
+                fullname = name
 
             position = source[f'C{row}'].value
             team = source[f'D{row}'].value
@@ -34,8 +37,6 @@ def process_sheet(source, storage, city):
                 case 'administration':
                     head = 'АГПП'
 
-            # head = source[f'E{row}'].value
-
             temp = {
                 'position': position.strip(),
                 'team': team.strip(),
@@ -48,7 +49,7 @@ def process_sheet(source, storage, city):
             else:
                 storage[name] = [temp]
 
-            # db.insert_user(name, position, team, head)
+            db.insert_user(name, position, team, head)
 
             row += 1
 

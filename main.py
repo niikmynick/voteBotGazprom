@@ -10,6 +10,7 @@ from aiogram.filters import Command, Filter
 from aiogram.types import Message
 from aiogram.utils.markdown import hbold
 from aiogram.utils.keyboard import ReplyKeyboardBuilder, KeyboardButton
+from aiogram.client.session.aiohttp import AiohttpSession
 
 import db
 from properties import BOT_TOKEN
@@ -29,7 +30,7 @@ users = {}
 performers = {}
 admins = ['niikmynick']
 
-
+# session = AiohttpSession(proxy='http://proxy.server:3128')
 bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
 dp = Dispatcher()
 
@@ -49,7 +50,7 @@ async def command_start_handler(message: Message) -> None:
 
     answer_text = (f'Здравствуйте, {hbold(name)}!\n'
                    '\nДобро пожаловавть в бот для голосования на II Научно-практической конференции\n'
-                   'Для начала работы введите свои ФИО')
+                   'Для начала работы введите свои ФИО (полностью, например: Иванов Иван Иванович)')
 
     await message.answer(answer_text)
 
@@ -81,9 +82,38 @@ async def vote_request_handler(message: Message) -> None:
     )
 
 
+@dp.message(TextFilter('Результаты'))
+async def results_request_handler(message: Message) -> None:
+    username = message.from_user.username
+    logging.info(f'User {username} asked for results')
+
+    if username not in admins:
+        return
+
+    answer_text = ''
+
+    for i in db.get_results():
+        n1 = '' if not i[0] else i[0].split()
+        n2 = '' if not i[1] else i[1].split()
+
+        answer_text += '' if not n1 else f'{n1[0]} {n1[1][0]}. {n1[2][0]}.'
+        answer_text += '' if not n2 else f', {n2[0]} {n2[1][0]}. {n2[2][0]}.'
+        answer_text += f'{hbold(f" - {i[2]} голосов")}\n'
+
+    kb_builder = ReplyKeyboardBuilder()
+    kb_builder.button(text="Голосовать")
+    kb_builder.button(text="Результаты")
+
+    await message.answer(
+        answer_text,
+        reply_markup=kb_builder.as_markup(resize_keyboard=True)
+    )
+
+
 @dp.message()
 async def text_handler(message: Message) -> None:
     kb_builder = ReplyKeyboardBuilder()
+    kb_exists = False
 
     if users[message.from_user.username]['status'] == 'need_name':
         username = message.from_user.username
@@ -115,6 +145,9 @@ async def text_handler(message: Message) -> None:
 
                 kb_builder.button(text="Голосовать")
 
+                if username in admins:
+                    kb_builder.button(text="Результаты")
+
         else:
             answer_text = 'К сожалению, вам недоступно использование этого бота'
             users[username]['status'] = 'denied'
@@ -137,6 +170,9 @@ async def text_handler(message: Message) -> None:
                 answer_text = 'Отлично, теперь ты можешь пользоваться ботом'
 
                 kb_builder.button(text=f"Голосовать", callback_data=f"vote")
+                if username in admins:
+                    kb_builder.button(text="Результаты")
+
             else:
                 answer_text = 'Вы указали неверное имя. Попробуйте еще раз'
 
@@ -153,7 +189,9 @@ async def text_handler(message: Message) -> None:
         u_id = db.get_user_id(users[username]['fullname'])[0][0]
         vote_id = 0
         for v_id in performers.keys():
-            text = f"{performers[v_id]['u1']}{', ' if performers[v_id]['u2'] else ''}{performers[v_id]['u2']} - {performers[v_id]['head']}"
+            text = (f"{performers[v_id]['u1']}"
+                    f"{', ' if performers[v_id]['u2'] else ''}"
+                    f"{performers[v_id]['u2']} - {performers[v_id]['head']}")
             if text == message.text:
                 vote_id = v_id
                 break
@@ -164,11 +202,14 @@ async def text_handler(message: Message) -> None:
             answer_text = 'Ваш голос записан!'
 
             db.register_vote(u_id, vote_id)
+            if username in admins:
+                kb_builder.button(text="Результаты")
+
         else:
             answer_text = 'Вы не можете голосовать за участника из своего филиала. Выберите другого участника'
 
     else:
-        answer_text = 'Ошибка'
+        answer_text = 'Ошибка. Используйте /start для перезапуска бота'
 
     await message.answer(
         answer_text,

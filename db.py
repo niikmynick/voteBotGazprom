@@ -12,7 +12,7 @@ def connect():
         conn = sqlite3.connect('identifier.sqlite')
         cur = conn.cursor()
         connected = True
-
+        #
         # cur.execute("""
         # create table if not exists User (
         #     id integer primary key autoincrement,
@@ -21,6 +21,51 @@ def connect():
         #     team varchar(255) not null,
         #     head varchar(255) not null,
         #     logged_in bool not null
+        # );""")
+        #
+        # cur.execute("""
+        # create table if not exists Performers (
+        #     id integer primary key autoincrement,
+        #     person_name varchar(255),
+        #     person2_name varchar(255),
+        #     head varchar(255)
+        # );""")
+        #
+        # cur.execute("""
+        # insert into Performers (person_name, person2_name, head)
+        # values ('Черкасова Татьяна Григорьевна', NULL, 'АГПП'),
+        #        ('Koвтун Иван Владимирович', NULL, 'МСК'),
+        #        ('Шамова Евгения Владимировна', NULL, 'МСК'),
+        #        ('Сутаев Мансур Магарамович', NULL, 'МСК'),
+        #        ('Пахтелев Константин Вадимович', NULL, 'НН'),
+        #        ('Репин Иван Ильич', NULL, 'НН'),
+        #        ('Васин Денис Александрович', 'Пьянзин Данил Игоревич', 'НН'),
+        #        ('Гольм Мария Александровна', NULL, 'СПб'),
+        #        ('Аверьянов Алексанлр Александрович', NULL, 'СПб'),
+        #        ('Сергеев Владислав Викторович', NULL, 'СПб'),
+        #        ('Соколов Максим Сергеевич', NULL, 'Саратов'),
+        #        ('Настин Антон Николаевич', NULL, 'Саратов'),
+        #        ('Черников Алексей Олегович', 'Рассада Анна Андреевна', 'Саратов'),
+        #        ('Суханова Елизавета Сергеевна', NULL, 'Саратов'),
+        #        ('Саломатов Владислав Андреевич', NULL, 'Тюмень'),
+        #        ('Шахматова Елизавета Константиновна', NULL, 'Тюмень'),
+        #        ('Сатюкова Ксения Aлексеевна', 'Шумков Иван Игоревич', 'Тюмень');
+        # """)
+        #
+        # cur.execute("""
+        # create table if not exists Vote (
+        #     person_id integer,
+        #     vote integer,
+        #     foreign key (person_id) references User(id),
+        #     foreign key (vote) references Performers(id)
+        # );""")
+        #
+        # cur.execute("""
+        # create table if not exists TGUser (
+        #     tg_id integer primary key,
+        #     u_id integer,
+        #     username varchar(20) not null,
+        #     foreign key (u_id) references User(id)
         # );
         # """)
 
@@ -134,6 +179,18 @@ def register_vote(u_id, u_vote_id):
         cur.execute(
             f"insert into Vote (person_id, vote) VALUES ({u_id}, {u_vote_id});")
         conn.commit()
+
+    except sqlite3.Error as e:
+        logging.error(e)
+
+
+def get_results():
+    try:
+        cur.execute(
+            f"select person_name, person2_name, count(vote) as amount from Performers "
+            f"left join Vote V on Performers.id = V.vote "
+            f"group by id order by amount desc;")
+        return cur.fetchall()
 
     except sqlite3.Error as e:
         logging.error(e)
