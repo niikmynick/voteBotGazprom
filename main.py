@@ -113,7 +113,6 @@ async def results_request_handler(message: Message) -> None:
 @dp.message()
 async def text_handler(message: Message) -> None:
     kb_builder = ReplyKeyboardBuilder()
-    kb_exists = False
 
     if users[message.from_user.username]['status'] == 'need_name':
         username = message.from_user.username
