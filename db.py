@@ -184,12 +184,23 @@ def register_vote(u_id, u_vote_id):
         logging.error(e)
 
 
-def get_results():
+def get_results_sort():
     try:
         cur.execute(
             f"select person_name, person2_name, count(vote) as amount from Performers "
             f"left join Vote V on Performers.id = V.vote "
             f"group by id order by amount desc;")
+        return cur.fetchall()
+
+    except sqlite3.Error as e:
+        logging.error(e)
+
+def get_results_nosort():
+    try:
+        cur.execute(
+            f"select person_name, person2_name, count(vote) as amount from Performers "
+            f"left join Vote V on Performers.id = V.vote "
+            f"group by id;")
         return cur.fetchall()
 
     except sqlite3.Error as e:

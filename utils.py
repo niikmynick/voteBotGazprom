@@ -44,12 +44,12 @@ def process_sheet(source, storage, city):
                 'note': note.strip(),
             }
 
-            if name in storage.keys():
-                storage[name].append(temp)
+            if fullname in storage.keys():
+                storage[fullname].append(temp)
             else:
-                storage[name] = [temp]
+                storage[fullname] = [temp]
 
-            db.insert_user(name, position, team, head)
+            # db.insert_user(name, position, team, head)
 
             row += 1
 

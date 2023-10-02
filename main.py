@@ -28,7 +28,7 @@ class TextFilter(Filter):
 data = {}
 users = {}
 performers = {}
-admins = ['niikmynick']
+admins = ['niikmynick', 'ShmidtMV']
 
 # session = AiohttpSession(proxy='http://proxy.server:3128')
 bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
@@ -49,7 +49,7 @@ async def command_start_handler(message: Message) -> None:
     name = message.from_user.first_name
 
     answer_text = (f'Здравствуйте, {hbold(name)}!\n'
-                   '\nДобро пожаловавть в бот для голосования на II Научно-практической конференции\n'
+                   '\nДобро пожаловать в бот для голосования на II Научно-практической конференции\n'
                    'Для начала работы введите свои ФИО (полностью, например: Иванов Иван Иванович)')
 
     await message.answer(answer_text)
@@ -92,7 +92,24 @@ async def results_request_handler(message: Message) -> None:
 
     answer_text = ''
 
-    for i in db.get_results():
+    # names = []
+    # votes = []
+
+    # for i in db.get_results_nosort():
+    #     n1 = '' if not i[0] else i[0].split()
+    #     n2 = '' if not i[1] else i[1].split()
+    #
+    #     temp = ''
+    #
+    #     temp += '' if not n1 else f'{n1[0]} {n1[1][0]}. {n1[2][0]}.'
+    #     temp += '' if not n2 else f', {n2[0]} {n2[1][0]}. {n2[2][0]}.'
+    #
+    #     names.append(temp)
+    #     votes.append(i[2])
+    #
+    # create_graph(names, votes)
+
+    for i in db.get_results_sort():
         n1 = '' if not i[0] else i[0].split()
         n2 = '' if not i[1] else i[1].split()
 
@@ -108,6 +125,11 @@ async def results_request_handler(message: Message) -> None:
         answer_text,
         reply_markup=kb_builder.as_markup(resize_keyboard=True)
     )
+    #
+    # with open('graph.png', 'rb') as photo:
+    #     await message.answer_photo(
+    #         photo
+    #     )
 
 
 @dp.message()
@@ -140,7 +162,8 @@ async def text_handler(message: Message) -> None:
                 db.insert_tg_user(message.from_user.id, p_id, username)
                 db.login_user(p_id)
 
-                answer_text = 'Отлично, теперь ты можешь пользоваться ботом'
+                answer_text = ('Отлично, теперь ты можешь пользоваться ботом. '
+                               'Для голосования используй кнопку "Голосовать" в меню')
 
                 kb_builder.button(text="Голосовать")
 
@@ -166,7 +189,8 @@ async def text_handler(message: Message) -> None:
                 db.insert_tg_user(message.from_user.id, p_id, username)
                 db.login_user(p_id)
 
-                answer_text = 'Отлично, теперь ты можешь пользоваться ботом'
+                answer_text = ('Отлично, теперь ты можешь пользоваться ботом. '
+                               'Для голосования используй кнопку "Голосовать" в меню')
 
                 kb_builder.button(text=f"Голосовать", callback_data=f"vote")
                 if username in admins:
