@@ -28,7 +28,7 @@ class TextFilter(Filter):
 data = {}
 users = {}
 performers = {}
-admins = ['niikmynick', 'ShmidtMV']
+admins = []
 
 # session = AiohttpSession(proxy='http://proxy.server:3128')
 bot = Bot(BOT_TOKEN, parse_mode=ParseMode.HTML)
